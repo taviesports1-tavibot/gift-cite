@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{StatsDashboard}from"@/components/stats-dashboard";export const metadata:Metadata={title:"Live Stats"};export default function StatsPage(){return <StatsDashboard/>}

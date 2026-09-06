@@ -1,0 +1,22 @@
+{
+  "name": "gift-chaos",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @gift-chaos/web",
+    "dev:server": "npm run dev -w @gift-chaos/realtime-server",
+    "build": "npm run build -w @gift-chaos/shared && npm run build -w @gift-chaos/game-engine && npm run build -w @gift-chaos/database && npm run build -w @gift-chaos/realtime-server && npm run build -w @gift-chaos/web",
+    "typecheck": "npm run build -w @gift-chaos/shared && npm run build -w @gift-chaos/game-engine && npm run build -w @gift-chaos/database && npm run typecheck -w @gift-chaos/realtime-server && npm run typecheck -w @gift-chaos/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "vitest run",
+    "db:generate": "npm run generate -w @gift-chaos/database",
+    "db:migrate": "npm run migrate -w @gift-chaos/database"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": { "node": ">=22" }
+}

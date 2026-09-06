@@ -1,0 +1,147 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+model AdminUser {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  role String @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StreamSession {
+  id String @id @default(cuid())
+  tiktokUsername String?
+  status String @default("idle")
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+  currentHp Int @default(10000)
+  totalLikes Int @default(0)
+  totalGifts Int @default(0)
+  totalCoins Int @default(0)
+  totalDamage Int @default(0)
+  rounds Round[]
+  giftEvents GiftEvent[]
+  gameEvents GameEvent[]
+  leaderboard LeaderboardEntry[]
+  snapshot GameSnapshot?
+  @@index([status, startedAt])
+}
+
+model GameSnapshot {
+  sessionId String @id
+  session StreamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  state Json
+  updatedAt DateTime @updatedAt
+}
+
+model Viewer {
+  id String @id
+  username String
+  avatar String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+  giftEvents GiftEvent[]
+  leaderboard LeaderboardEntry[]
+}
+
+model GiftCatalog {
+  id String @id
+  name String
+  image String?
+  coinValue Int @default(0)
+  available Boolean @default(true)
+  updatedAt DateTime @updatedAt
+  mapping GiftMapping?
+  events GiftEvent[]
+}
+
+model GiftMapping {
+  id String @id @default(cuid())
+  giftId String @unique
+  gift GiftCatalog @relation(fields: [giftId], references: [id])
+  effect String
+  effectType String
+  damage Int
+  multiplier Float @default(1)
+  cooldownMs Int @default(0)
+  intensity Float @default(1)
+  speed Float @default(1)
+  scale Float @default(1)
+  particles Int @default(20)
+  screenShake Float @default(1)
+  sound String
+  enabled Boolean @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model GiftEvent {
+  id String @id
+  sessionId String
+  session StreamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer Viewer @relation(fields: [viewerId], references: [id])
+  giftId String
+  gift GiftCatalog @relation(fields: [giftId], references: [id])
+  giftName String
+  coinValue Int
+  repeatCount Int @default(1)
+  streakId String?
+  damage Int
+  occurredAt DateTime
+  createdAt DateTime @default(now())
+  @@index([sessionId, occurredAt])
+  @@index([viewerId, sessionId])
+}
+
+model Round {
+  id String @id @default(cuid())
+  sessionId String
+  session StreamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  number Int
+  startTime DateTime @default(now())
+  endTime DateTime?
+  damage Int @default(0)
+  giftEvents Int @default(0)
+  winnerId String?
+  winnerUsername String?
+  @@unique([sessionId, number])
+}
+
+model GameEvent {
+  id String @id
+  sessionId String
+  session StreamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  kind String
+  payload Json
+  occurredAt DateTime
+  @@index([sessionId, occurredAt])
+}
+
+model LeaderboardEntry {
+  id String @id @default(cuid())
+  sessionId String
+  session StreamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  viewerId String
+  viewer Viewer @relation(fields: [viewerId], references: [id])
+  coins Int @default(0)
+  damage Int @default(0)
+  gifts Int @default(0)
+  updatedAt DateTime @updatedAt
+  @@unique([sessionId, viewerId])
+  @@index([sessionId, coins])
+}
+
+model GameSettings {
+  id String @id @default("global")
+  data Json
+  updatedAt DateTime @updatedAt
+}
+
+model Statistics {
+  id String @id @default(cuid())
+  sessionId String @unique
+  data Json
+  updatedAt DateTime @updatedAt
+}

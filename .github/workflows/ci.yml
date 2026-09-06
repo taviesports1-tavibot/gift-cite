@@ -1,0 +1,30 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: giftchaos }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/giftchaos
+      NEXT_PUBLIC_REALTIME_URL: http://localhost:8080
+      REALTIME_SERVER_URL: http://localhost:8080
+      ADMIN_PASSWORD: test-password
+      AUTH_SECRET: test-auth-secret-with-more-than-32-bytes
+      REALTIME_ADMIN_TOKEN: test-realtime-token
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

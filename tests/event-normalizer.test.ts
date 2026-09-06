@@ -1,0 +1,3 @@
+import { describe,expect,it } from "vitest";
+import { TikTokEventNormalizer } from "../apps/realtime-server/src/lib/tiktok/event-normalizer";
+describe("TikTok event normalization",()=>{it("counts only the streak delta",()=>{const n=new TikTokEventNormalizer();const first=n.gift({msgId:"s1",giftId:"rose",giftName:"Rose",giftType:1,repeatCount:1,userId:"u",uniqueId:"user"});const second=n.gift({msgId:"s1",giftId:"rose",giftName:"Rose",giftType:1,repeatCount:5,userId:"u",uniqueId:"user"});const end=n.gift({msgId:"s1",giftId:"rose",giftName:"Rose",giftType:1,repeatCount:5,repeatEnd:true,userId:"u",uniqueId:"user"});expect(first?.repeatCount).toBe(1);expect(second?.repeatCount).toBe(4);expect(end).toBeNull()})});
