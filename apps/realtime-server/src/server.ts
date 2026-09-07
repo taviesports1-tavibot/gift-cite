@@ -67,9 +67,9 @@ function queueFor(sessionId: string) {
 }
 async function hydrate(sessionId: string) {
   const [existing, mappings, catalog] = await Promise.all([
-    loadSnapshot(sessionId).catch(error => { log.warn({ error }, "snapshot load failed"); return null; }),
-    loadMappings().catch(error => { log.warn({ error }, "mapping load failed"); return []; }),
-    loadCatalog().catch(error => { log.warn({ error }, "gift catalog load failed"); return []; })
+    loadSnapshot(sessionId).catch(err => { log.warn({ err }, "snapshot load failed"); return null; }),
+    loadMappings().catch(err => { log.warn({ err }, "mapping load failed"); return []; }),
+    loadCatalog().catch(err => { log.warn({ err }, "gift catalog load failed"); return []; })
   ]);
   if (catalog.length) giftCatalog = catalog;
   const hydratedMappings = enrichMappings(mappings.length ? mappings : DEFAULT_MAPPINGS);
@@ -84,8 +84,8 @@ async function processEvent(sessionId: string, event: NormalizedTikTokEvent) {
     if (result.duplicate) return;
     io.to(sessionId).emit("game:state", result.state);
     if (result.visual) queueFor(sessionId).push(result.visual);
-    await saveSnapshot(result.state).catch(error => log.error({ error, eventId: event.id }, "snapshot save failed"));
-    await recordEvent(event, result.state, result.visual?.damage ?? 0).catch(error => log.error({ error, eventId: event.id }, "event persistence failed"));
+    await saveSnapshot(result.state).catch(err => log.error({ err, eventId: event.id }, "snapshot save failed"));
+    await recordEvent(event, result.state, result.visual?.damage ?? 0).catch(err => log.error({ err, eventId: event.id }, "event persistence failed"));
     if (result.roundCompleted) {
       io.to(sessionId).emit("game:defeated", { winner: event.viewer.username, round: result.state.round });
       if (result.state.settings.autoNewRound) setTimeout(() => { const state = engine.command("resetRound"); io.to(sessionId).emit("game:state", state); void saveSnapshot(state); }, result.state.settings.roundResetDelayMs).unref();
@@ -100,7 +100,7 @@ provider.onStatus(status => {
   const engine = engineFor("live");
   engine.state = { ...engine.state, connection: status.state, tiktokUsername: status.username };
   io.to("live").emit("game:state", engine.state);
-  if (status.state === "connected") void refreshGiftCatalog().catch(error => log.warn({ error }, "gift catalog refresh failed"));
+  if (status.state === "connected") void refreshGiftCatalog().catch(err => log.warn({ err }, "gift catalog refresh failed"));
   log.info({ provider: provider.name, state: status.state, username: status.username }, "TikTok provider status");
 });
 
