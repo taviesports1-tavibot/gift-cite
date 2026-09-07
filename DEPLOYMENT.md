@@ -1,6 +1,6 @@
 # Production deployment
 
-The current frontend production URL is `https://gift-chaos-game.vercel.app`. Use that origin wherever this guide says `your-web-domain` unless a custom domain is configured later.
+The current frontend production URL is `https://gift-chaos-game.vercel.app` and the realtime backend is `https://gift-cite-production.up.railway.app`. Use these origins unless custom domains are configured later.
 
 ## 1. Create PostgreSQL
 

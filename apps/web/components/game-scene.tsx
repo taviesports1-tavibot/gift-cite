@@ -7,6 +7,7 @@ import { Crown, Heart, Radio, Trophy, Wifi, WifiOff } from "lucide-react";
 import { DEFAULT_MAPPINGS, DEFAULT_SETTINGS, type GameState, type GiftMapping, type VisualEffectEvent } from "@gift-chaos/shared";
 import { EffectIcon } from "./effect-icon";
 import { GiftThumbnail } from "./gift-thumbnail";
+import { PUBLIC_REALTIME_URL } from "@/lib/runtime-config";
 
 const fallbackState: GameState = { sessionId: "live", status: "idle", connection: "disconnected", hp: 10_000, maxHp: 10_000, round: 1, combo: 0, likeProgress: 4230, lastUpdatedAt: new Date(0).toISOString(), leaderboard: [{ viewerId: "1", username: "ChaosKing", coins: 2840, damage: 3920, gifts: 19 }, { viewerId: "2", username: "Carolina", coins: 1440, damage: 2110, gifts: 11 }, { viewerId: "3", username: "Anton", coins: 820, damage: 1320, gifts: 8 }], feed: [], stats: { totalViewers: 0, totalGifts: 0, totalCoins: 0, totalLikes: 4230, newFollowers: 0, shares: 0, totalDamage: 0, bossesDefeated: 0, roundsCompleted: 0, longestCombo: 0 }, settings: DEFAULT_SETTINGS, overlayClients: 0 };
 
@@ -32,7 +33,7 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
   }, [activeLimit]);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_REALTIME_URL;
+    const url = PUBLIC_REALTIME_URL;
     if (!url) return;
     const socket = io(url, { auth: { sessionId }, transports: ["websocket", "polling"], reconnection: true, reconnectionDelayMax: 5000 });
     socketRef.current = socket;
