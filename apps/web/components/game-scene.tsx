@@ -39,7 +39,7 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
     socketRef.current = socket;
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
-    socket.on("game:state", (next: GameState) => setState(next));
+    socket.on("game:state", (next: GameState) => { setState(next); if (next.hp > 0) setDefeated(null); });
     socket.on("game:mappings", (next: GiftMapping[]) => setMappings(next));
     socket.on("game:effect", (effect: VisualEffectEvent) => { queue.current.push(effect); playEffectSound(effect.asset, settingsRef.current.soundEnabled, settingsRef.current.masterVolume * settingsRef.current.effectsVolume); runQueued(); });
     socket.on("game:defeated", setDefeated);
@@ -56,18 +56,18 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
     <div className="arena-bg"><div className="arena-grid"/><div className="spotlight one"/><div className="spotlight two"/><div className="arena-ring r1"/><div className="arena-ring r2"/></div>
     <header className="game-header">
       <div className="round-pill"><Radio size={14}/><span>РАУНД {state.round}</span><i>{state.status.toUpperCase()}</i></div>
-      <div className="hp-panel"><div className="hp-title"><strong>ЗДОРОВЬЕ БОССА</strong><span>{state.hp.toLocaleString()} / {state.maxHp.toLocaleString()}</span></div><div className="hp-track"><motion.i animate={{ width: `${hpPercent}%` }} transition={{ type: "spring", stiffness: 90, damping: 18 }}/><b style={{ left: `${hpPercent}%` }}/></div></div>
+      <div className="hp-panel"><div className="hp-title"><strong>ЗДОРОВЬЕ БОССА</strong><span>{state.hp.toLocaleString("ru-RU")} / {state.maxHp.toLocaleString("ru-RU")}</span></div><div className="hp-track"><motion.i animate={{ width: `${hpPercent}%` }} transition={{ type: "spring", stiffness: 90, damping: 18 }}/><b style={{ left: `${hpPercent}%` }}/></div></div>
       <div className={`connection-dot ${connected ? "online" : "offline"}`}>{connected ? <Wifi size={14}/> : <WifiOff size={14}/>}</div>
     </header>
-    <aside className="supporters"><h3><Trophy size={15}/> ЛУЧШИЕ ИГРОКИ</h3>{state.settings.leaderboardEnabled && state.leaderboard.slice(0,3).map((row, index) => <div className="supporter" key={row.viewerId}><span className={`rank r${index+1}`}>{index+1}</span><i>{row.username.slice(0,1).toUpperCase()}</i><div><b>@{row.username}</b><small>{row.coins.toLocaleString()} монет · {row.damage.toLocaleString()} урона</small></div></div>)}</aside>
+    <aside className="supporters"><h3><Trophy size={15}/> ЛУЧШИЕ ИГРОКИ</h3>{state.settings.leaderboardEnabled && state.leaderboard.slice(0,3).map((row, index) => <div className="supporter" key={row.viewerId}><span className={`rank r${index+1}`}>{index+1}</span><i>{row.username.slice(0,1).toUpperCase()}</i><div><b>@{row.username}</b><small>{row.coins.toLocaleString("ru-RU")} монет · {row.damage.toLocaleString("ru-RU")} урона</small></div></div>)}</aside>
     <div className="item-rail left">{items.slice(0,5).map(item => <GiftCard mapping={item} key={item.giftId}/>)}</div>
     <div className="item-rail right">{items.slice(5).map(item => <GiftCard mapping={item} key={item.giftId}/>)}</div>
   <main className="boss-zone"><div className="target-halo"/><motion.div className="boss-wrap" animate={effects.length ? { x: [0,-10,12,-6,0], rotate: [0,-1,1.5,-.5,0] } : { y: [0,-4,0] }} transition={effects.length ? { duration: .35 } : { duration: 2.8, repeat: Infinity }}><Image src="/game/grumpy-boss.webp" width={720} height={1280} priority alt="Угрюмый Босс"/></motion.div><div className="boss-label"><Crown size={14}/><span>УГРЮМЫЙ БОСС</span></div></main>
     <AnimatePresence>{effects.map((effect) => <EffectAnimation key={effect.id} effect={effect} onDone={() => finishEffect(effect.id)}/>)}</AnimatePresence>
-    <AnimatePresence>{effects.slice(-2).map(effect => <motion.div key={`d-${effect.id}`} className={`damage-number ${effect.critical ? "critical" : ""}`} initial={{ opacity:0, y:30, scale:.4 }} animate={{ opacity:1, y:-80, scale:1 }} exit={{ opacity:0, y:-130 }} transition={{ duration:1.15 }} onAnimationComplete={() => {}}>{effect.critical && <small>CRITICAL HIT!</small>}-{effect.damage.toLocaleString()}</motion.div>)}</AnimatePresence>
+    <AnimatePresence>{effects.slice(-2).map(effect => <motion.div key={`d-${effect.id}`} className={`damage-number ${effect.critical ? "critical" : ""}`} initial={{ opacity:0, y:30, scale:.4 }} animate={{ opacity:1, y:-80, scale:1 }} exit={{ opacity:0, y:-130 }} transition={{ duration:1.15 }} onAnimationComplete={() => {}}>{effect.critical && <small>CRITICAL HIT!</small>}-{effect.damage.toLocaleString("ru-RU")}</motion.div>)}</AnimatePresence>
     {state.combo >= 2 && <motion.div className="combo-badge" key={state.combo} initial={{ scale:.5, rotate:-8 }} animate={{ scale:1, rotate:0 }}><span>КОМБО ХАОСА</span><b>×{state.combo}</b></motion.div>}
     <div className="live-feed"><AnimatePresence>{state.feed.filter(item=>state.settings.commentsEnabled||item.kind!=="comment").slice(0,3).map(item => <motion.div key={item.id} initial={{ opacity:0,x:-20 }} animate={{ opacity:1,x:0 }} exit={{ opacity:0 }}><i>{item.kind === "gift" ? "✦" : "•"}</i>{item.text}</motion.div>)}</AnimatePresence></div>
-    <footer className="like-goal"><div><Heart size={18} fill="currentColor"/><span>ЦЕЛЬ ЛАЙКОВ</span><b>{state.likeProgress.toLocaleString()} / {state.settings.likeGoal.toLocaleString()}</b></div><div className="like-track"><i style={{ width: `${likePercent}%` }}/></div></footer>
+    <footer className="like-goal"><div><Heart size={18} fill="currentColor"/><span>ЦЕЛЬ ЛАЙКОВ</span><b>{state.likeProgress.toLocaleString("ru-RU")} / {state.settings.likeGoal.toLocaleString("ru-RU")}</b></div><div className="like-track"><i style={{ width: `${likePercent}%` }}/></div></footer>
     <AnimatePresence>{(defeated || state.hp <= 0) && <motion.div className="defeated-screen" initial={{ opacity:0,scale:1.2 }} animate={{ opacity:1,scale:1 }} exit={{ opacity:0 }}><span>РАУНД {defeated?.round ?? state.round} ЗАВЕРШЁН</span><h2>БОСС<br/>ПОБЕЖДЁН</h2><p>@{defeated?.winner ?? "КОМАНДА ХАОСА"}<b> УНИЧТОЖИЛ БОССА!</b></p><div className="confetti"/></motion.div>}</AnimatePresence>
   </div>;
 }
