@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { io, type Socket } from "socket.io-client";
 import { Crown, Heart, Radio, Trophy, Wifi, WifiOff } from "lucide-react";
 import { DEFAULT_MAPPINGS, DEFAULT_SETTINGS, type GameState, type GiftMapping, type VisualEffectEvent } from "@gift-chaos/shared";
-import { EffectIcon } from "./effect-icon";
+import { EffectStage } from "./effect-stage";
 import { GiftThumbnail } from "./gift-thumbnail";
 import { PUBLIC_REALTIME_URL } from "@/lib/runtime-config";
 
@@ -17,6 +17,7 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
   const [state, setState] = useState<GameState>({ ...fallbackState, sessionId });
   const [mappings, setMappings] = useState<GiftMapping[]>(DEFAULT_MAPPINGS);
   const [effects, setEffects] = useState<VisualEffectEvent[]>([]);
+  const [impacts, setImpacts] = useState<VisualEffectEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [defeated, setDefeated] = useState<{ winner: string; round: number } | null>(null);
   const queue = useRef<VisualEffectEvent[]>([]);
@@ -41,13 +42,13 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
     socket.on("disconnect", () => setConnected(false));
     socket.on("game:state", (next: GameState) => { setState(next); if (next.hp > 0) setDefeated(null); });
     socket.on("game:mappings", (next: GiftMapping[]) => setMappings(next));
-    socket.on("game:effect", (effect: VisualEffectEvent) => { queue.current.push(effect); playEffectSound(effect.asset, settingsRef.current.soundEnabled, settingsRef.current.masterVolume * settingsRef.current.effectsVolume); runQueued(); });
+    socket.on("game:effect", (effect: VisualEffectEvent) => { if (queue.current.length < 200) queue.current.push(effect); runQueued(); });
     socket.on("game:defeated", setDefeated);
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [sessionId, runQueued]);
 
   useEffect(() => { const id = window.setInterval(runQueued, 80); return () => window.clearInterval(id); }, [runQueued]);
-  const finishEffect = (id: string) => { setEffects(current => current.filter(item => item.id !== id)); window.setTimeout(runQueued, 0); };
+  const finishEffect = (id: string) => { setEffects(current => current.filter(item => item.id !== id)); setImpacts(current => current.filter(item => item.id !== id)); };
   const hpPercent = Math.max(0, Math.min(100, state.hp / state.maxHp * 100));
   const likePercent = Math.min(100, state.likeProgress / state.settings.likeGoal * 100);
   const items = useMemo(() => mappings.filter(item => item.enabled).slice(0, 9), [mappings]);
@@ -62,9 +63,9 @@ export function GameScene({ sessionId = "live", compact = false }: { sessionId?:
     <aside className="supporters"><h3><Trophy size={15}/> ЛУЧШИЕ ИГРОКИ</h3>{state.settings.leaderboardEnabled && state.leaderboard.slice(0,3).map((row, index) => <div className="supporter" key={row.viewerId}><span className={`rank r${index+1}`}>{index+1}</span><i>{row.username.slice(0,1).toUpperCase()}</i><div><b>@{row.username}</b><small>{row.coins.toLocaleString("ru-RU")} монет · {row.damage.toLocaleString("ru-RU")} урона</small></div></div>)}</aside>
     <div className="item-rail left">{items.slice(0,5).map(item => <GiftCard mapping={item} key={item.giftId}/>)}</div>
     <div className="item-rail right">{items.slice(5).map(item => <GiftCard mapping={item} key={item.giftId}/>)}</div>
-  <main className="boss-zone"><div className="target-halo"/><motion.div className="boss-wrap" animate={effects.length ? { x: [0,-10,12,-6,0], rotate: [0,-1,1.5,-.5,0] } : { y: [0,-4,0] }} transition={effects.length ? { duration: .35 } : { duration: 2.8, repeat: Infinity }}><Image src="/game/grumpy-boss.webp" width={720} height={1280} priority alt="Угрюмый Босс"/></motion.div><div className="boss-label"><Crown size={14}/><span>УГРЮМЫЙ БОСС</span></div></main>
-    <AnimatePresence>{effects.map((effect) => <EffectAnimation key={effect.id} effect={effect} onDone={() => finishEffect(effect.id)}/>)}</AnimatePresence>
-    <AnimatePresence>{effects.slice(-2).map(effect => <motion.div key={`d-${effect.id}`} className={`damage-number ${effect.critical ? "critical" : ""}`} initial={{ opacity:0, y:30, scale:.4 }} animate={{ opacity:1, y:-80, scale:1 }} exit={{ opacity:0, y:-130 }} transition={{ duration:1.15 }} onAnimationComplete={() => {}}>{effect.critical && <small>CRITICAL HIT!</small>}-{effect.damage.toLocaleString("ru-RU")}</motion.div>)}</AnimatePresence>
+  <main className="boss-zone"><div className="target-halo"/><motion.div className="boss-wrap" animate={impacts.length ? { x: [0,-10,12,-6,0], rotate: [0,-1,1.5,-.5,0] } : { y: [0,-4,0] }} transition={impacts.length ? { duration: .35 } : { duration: 2.8, repeat: Infinity }}><Image src="/game/grumpy-boss.webp" width={720} height={1280} priority alt="Угрюмый Босс"/></motion.div><div className="boss-label"><Crown size={14}/><span>УГРЮМЫЙ БОСС</span></div></main>
+    <EffectStage effects={effects} onDone={finishEffect} onImpact={effect => { setImpacts(current => [...current.slice(-3), effect]); playEffectSound(effect.asset, settingsRef.current.soundEnabled, settingsRef.current.masterVolume * settingsRef.current.effectsVolume); }}/>
+    <AnimatePresence>{impacts.slice(-2).map(effect => <motion.div key={`d-${effect.id}`} className={`damage-number ${effect.critical ? "critical" : ""}`} initial={{ opacity:0, y:30, scale:.4 }} animate={{ opacity:1, y:-80, scale:1 }} exit={{ opacity:0, y:-130 }} transition={{ duration:1.15 }} onAnimationComplete={() => {}}>{effect.critical && <small>CRITICAL HIT!</small>}-{effect.damage.toLocaleString("ru-RU")}</motion.div>)}</AnimatePresence>
     {state.combo >= 2 && <motion.div className="combo-badge" key={state.combo} initial={{ scale:.5, rotate:-8 }} animate={{ scale:1, rotate:0 }}><span>КОМБО ХАОСА</span><b>×{state.combo}</b></motion.div>}
     <div className="live-feed"><AnimatePresence>{state.feed.filter(item=>state.settings.commentsEnabled||item.kind!=="comment").slice(0,3).map(item => <motion.div key={item.id} initial={{ opacity:0,x:-20 }} animate={{ opacity:1,x:0 }} exit={{ opacity:0 }}><i>{item.kind === "gift" ? "✦" : "•"}</i>{item.text}</motion.div>)}</AnimatePresence></div>
     <footer className="like-goal"><div><Heart size={18} fill="currentColor"/><span>ЦЕЛЬ ЛАЙКОВ</span><b>{state.likeProgress.toLocaleString("ru-RU")} / {state.settings.likeGoal.toLocaleString("ru-RU")}</b></div><div className="like-track"><i style={{ width: `${likePercent}%` }}/></div></footer>
@@ -94,11 +95,4 @@ function playEffectSound(asset: VisualEffectEvent["asset"], enabled: boolean, vo
     oscillator.connect(gain).connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .3);
     oscillator.addEventListener("ended", () => void context.close());
   } catch { /* Some browser sources require explicit audio capture. */ }
-}
-
-function EffectAnimation({ effect, onDone }: { effect: VisualEffectEvent; onDone: () => void }) {
-  const side = effect.origin === "right" ? 1 : -1;
-  const isDrop = effect.origin === "top";
-  const duration = effect.asset === "bomb" ? 1.8 : effect.asset === "meteor" ? 1.4 : .8;
-  return <motion.div className={`flying-effect ${effect.asset} ${effect.type}`} initial={isDrop ? { x: "48vw", y: "-20vh", rotate: -30, scale:.6 } : { x: side * 55 + "vw", y: "40vh", rotate: side * 80, scale:.7 }} animate={isDrop ? { x: "4vw", y: "43vh", rotate: 20, scale:1.3 } : { x: "0vw", y: "4vh", rotate: side * 540, scale:1.1 }} exit={{ opacity:0, scale:2.2 }} transition={{ duration, ease: effect.asset === "meteor" ? [0.2,.8,.2,1] : "easeIn" }} onAnimationComplete={onDone}><span><EffectIcon effect={effect.asset} size={effect.asset === "meteor" ? 88 : 54}/></span>{effect.repeatCount > 1 && <b>×{effect.repeatCount}</b>}<div className="particle-burst">{Array.from({ length: Math.min(24, 6 + Math.floor(effect.intensity * 5)) }).map((_,i)=><i key={i} style={{ "--i": i } as React.CSSProperties}/>)}</div></motion.div>;
 }
