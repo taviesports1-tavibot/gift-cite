@@ -88,7 +88,7 @@ async function processEvent(sessionId: string, event: NormalizedTikTokEvent) {
     await recordEvent(event, result.state, result.visual?.damage ?? 0).catch(err => log.error({ err, eventId: event.id }, "event persistence failed"));
     if (result.roundCompleted) {
       io.to(sessionId).emit("game:defeated", { winner: event.viewer.username, round: result.state.round });
-      if (result.state.settings.autoNewRound) setTimeout(() => { const state = engine.command("resetRound"); io.to(sessionId).emit("game:state", state); void saveSnapshot(state); }, result.state.settings.roundResetDelayMs).unref();
+      if (result.state.settings.autoNewRound) setTimeout(() => { const state = engine.command("resetRound"); io.to(sessionId).emit("game:state", state); void saveSnapshot(state).catch(err => log.error({ err }, "round snapshot save failed")); }, result.state.settings.roundResetDelayMs).unref();
     }
   }).finally(() => { if (locks.get(sessionId) === next) locks.delete(sessionId); });
   locks.set(sessionId, next);
@@ -128,7 +128,7 @@ const adminOnly: express.RequestHandler = (req, res, next) => {
 
 app.get("/health", async (_req, res) => {
   const db = process.env.DATABASE_URL ? await databaseHealth().catch(() => ({ ok: false, latencyMs: -1 })) : { ok: false, latencyMs: -1, mode: "memory" };
-  res.json({ ok: true, server: "online", database: db, tiktok: engineFor("live").state.connection, websocket: "online", uptimeSeconds: Math.floor(process.uptime()), provider: provider.name, timestamp: new Date().toISOString() });
+  res.status(db.ok ? 200 : 503).json({ ok: db.ok, server: "online", database: db, tiktok: engineFor("live").state.connection, websocket: "online", uptimeSeconds: Math.floor(process.uptime()), provider: provider.name, timestamp: new Date().toISOString() });
 });
 app.get("/api/state", (req, res) => res.json(engineFor(String(req.query.sessionId ?? "live")).state));
 app.get("/api/mappings", (_req, res) => res.json(engineFor("live").mappings));
